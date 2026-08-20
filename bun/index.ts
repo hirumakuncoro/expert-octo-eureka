@@ -9,6 +9,7 @@ const decrementMax = Number(Bun.env.DECREMENT_MAX ?? 10);
 const sql = new SQL({
   url: Bun.env.DATABASE_URL,
   max: dbMaxConns,
+  prepare: false,
   idleTimeout: 30,
   connectionTimeout: 30,
 });

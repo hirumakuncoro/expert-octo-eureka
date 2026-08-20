@@ -1,0 +1,19 @@
+@host = stresslab.example.com
+
+### Go health
+GET https://{{host}}/api/go/health
+
+### Bun health
+GET https://{{host}}/api/bun/health
+
+### Go product detail
+GET https://{{host}}/api/go/products/1
+
+### Bun product detail
+GET https://{{host}}/api/bun/products/1
+
+### Go random purchase
+POST https://{{host}}/api/go/products/random-purchase
+
+### Bun random purchase
+POST https://{{host}}/api/bun/products/random-purchase

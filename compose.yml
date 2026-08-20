@@ -1,0 +1,153 @@
+services:
+  traefik:
+    image: traefik:v3.7.5
+    restart: unless-stopped
+    command:
+      - --providers.docker
+      - --providers.docker.exposedbydefault=false
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --certificatesresolvers.cfresolver.acme.dnschallenge
+      - --certificatesresolvers.cfresolver.acme.dnschallenge.provider=cloudflare
+      - --certificatesresolvers.cfresolver.acme.email=${ACME_EMAIL:-ikhsanheriyawan@gmail.com}
+      - --certificatesresolvers.cfresolver.acme.storage=/letsencrypt/acme.json
+      - --log.level=${TRAEFIK_LOG_LEVEL:-INFO}
+      - --accesslog=true
+      - --accesslog.filepath=/logs/access.log
+    ports:
+      - "${TRAEFIK_HTTP_PORT:-80}:80"
+      - "${TRAEFIK_HTTPS_PORT:-443}:443"
+    environment:
+      CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+      - ./config/dynamic:/etc/traefik/dynamic:ro
+      - ./logs:/logs
+    depends_on:
+      - go-service
+      - bun-service
+    networks:
+      - edge
+      - backend
+
+  go-service:
+    build:
+      context: ./go
+    environment:
+      PORT: 8080
+      DATABASE_URL: postgres://${POSTGRES_USER:-stress}:${POSTGRES_PASSWORD:-stress}@postgres:5432/${POSTGRES_DB:-stresslab}?sslmode=disable
+      PRODUCT_ID_MIN: ${PRODUCT_ID_MIN:-1}
+      PRODUCT_ID_MAX: ${PRODUCT_ID_MAX:-5}
+      DECREMENT_MIN: ${DECREMENT_MIN:-1}
+      DECREMENT_MAX: ${DECREMENT_MAX:-10}
+    deploy:
+      replicas: 1
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.go.rule=Host(`${APP_HOST:-localhost}`) && PathPrefix(`/api/go`)
+      - traefik.http.routers.go.entrypoints=websecure
+      - traefik.http.routers.go.tls.certresolver=cfresolver
+      - traefik.http.middlewares.go-strip.stripprefix.prefixes=/api/go
+      - traefik.http.routers.go.middlewares=go-strip
+      - traefik.http.services.go.loadbalancer.server.port=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  bun-service:
+    build:
+      context: ./bun
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgres://${POSTGRES_USER:-stress}:${POSTGRES_PASSWORD:-stress}@pgbouncer:6432/${POSTGRES_DB:-stresslab}?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      PRODUCT_ID_MIN: ${PRODUCT_ID_MIN:-1}
+      PRODUCT_ID_MAX: ${PRODUCT_ID_MAX:-5}
+      DECREMENT_MIN: ${DECREMENT_MIN:-1}
+      DECREMENT_MAX: ${DECREMENT_MAX:-10}
+    deploy:
+      replicas: 2
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.bun.rule=Host(`${APP_HOST:-localhost}`) && PathPrefix(`/api/bun`)
+      - traefik.http.routers.bun.entrypoints=websecure
+      - traefik.http.routers.bun.tls.certresolver=cfresolver
+      - traefik.http.middlewares.bun-strip.stripprefix.prefixes=/api/bun
+      - traefik.http.routers.bun.middlewares=bun-strip
+      - traefik.http.services.bun.loadbalancer.server.port=3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-stress}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stress}
+      POSTGRES_DB: ${POSTGRES_DB:-stresslab}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - max_connections=100
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - backend
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.24.1-p1
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-stress}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-stress}
+      DB_NAME: ${POSTGRES_DB:-stresslab}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 200
+      DEFAULT_POOL_SIZE: 20
+      RESERVE_POOL_SIZE: 5
+      AUTH_TYPE: scram-sha-256
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - backend
+
+volumes:
+  pgdata:
+
+networks:
+  edge:
+  backend:

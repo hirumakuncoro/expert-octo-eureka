@@ -41,6 +41,7 @@ services:
     environment:
       PORT: 8080
       DATABASE_URL: postgres://${POSTGRES_USER:-stress}:${POSTGRES_PASSWORD:-stress}@postgres:5432/${POSTGRES_DB:-stresslab}?sslmode=disable
+      DB_MAX_CONNS: ${GO_DB_MAX_CONNS:-20}
       PRODUCT_ID_MIN: ${PRODUCT_ID_MIN:-1}
       PRODUCT_ID_MAX: ${PRODUCT_ID_MAX:-5}
       DECREMENT_MIN: ${DECREMENT_MIN:-1}
@@ -67,6 +68,7 @@ services:
     environment:
       PORT: 3000
       DATABASE_URL: postgres://${POSTGRES_USER:-stress}:${POSTGRES_PASSWORD:-stress}@pgbouncer:6432/${POSTGRES_DB:-stresslab}?sslmode=disable
+      DB_MAX_CONNS: ${BUN_DB_MAX_CONNS:-10}
       REDIS_URL: redis://redis:6379
       PRODUCT_ID_MIN: ${PRODUCT_ID_MIN:-1}
       PRODUCT_ID_MAX: ${PRODUCT_ID_MAX:-5}

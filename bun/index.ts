@@ -1,10 +1,17 @@
-import { sql } from "bun";
+import { SQL } from "bun";
 
 const port = Number(Bun.env.PORT ?? 3000);
+const dbMaxConns = Number(Bun.env.DB_MAX_CONNS ?? 10);
 const productIdMin = Number(Bun.env.PRODUCT_ID_MIN ?? 1);
 const productIdMax = Number(Bun.env.PRODUCT_ID_MAX ?? 5);
 const decrementMin = Number(Bun.env.DECREMENT_MIN ?? 1);
 const decrementMax = Number(Bun.env.DECREMENT_MAX ?? 10);
+const sql = new SQL({
+  url: Bun.env.DATABASE_URL,
+  max: dbMaxConns,
+  idleTimeout: 30,
+  connectionTimeout: 30,
+});
 
 type ProductRow = {
   id: number;

@@ -450,5 +450,5 @@ Observability di sini maksudnya hanya catatan/command pendamping saat load test 
 
 
 vps awal: idle awal 218mb
-setalh instal docker: 227mb
+setalh instal docker: 250mb
 instalasi and run: 500mb

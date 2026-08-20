@@ -17,6 +17,7 @@ import (
 
 type config struct {
 	port         string
+	dbMaxConns   int32
 	productIDMin int
 	productIDMax int
 	decrementMin int
@@ -46,7 +47,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	poolConfig.MaxConns = 10
+	poolConfig.MaxConns = cfg.dbMaxConns
 	poolConfig.MinConns = 1
 
 	db, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
@@ -101,6 +102,7 @@ func main() {
 func loadConfig() config {
 	return config{
 		port:         env("PORT", "8080"),
+		dbMaxConns:   int32(envInt("DB_MAX_CONNS", 20)),
 		productIDMin: envInt("PRODUCT_ID_MIN", 1),
 		productIDMax: envInt("PRODUCT_ID_MAX", 5),
 		decrementMin: envInt("DECREMENT_MIN", 1),

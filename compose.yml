@@ -1,6 +1,7 @@
 services:
   traefik:
     image: traefik:v3.7.5
+    container_name: traefik
     restart: unless-stopped
     command:
       - --providers.docker
@@ -30,12 +31,13 @@ services:
       - ./logs:/logs
     depends_on:
       - go-service
-      - bun-service
+      - bun
     networks:
       - edge
       - backend
 
   go-service:
+    container_name: go-service
     build:
       context: ./go
     environment:
@@ -46,8 +48,6 @@ services:
       PRODUCT_ID_MAX: ${PRODUCT_ID_MAX:-5}
       DECREMENT_MIN: ${DECREMENT_MIN:-1}
       DECREMENT_MAX: ${DECREMENT_MAX:-10}
-    deploy:
-      replicas: 1
     labels:
       - traefik.enable=true
       - traefik.http.routers.go.rule=Host(`${APP_HOST:-localhost}`) && PathPrefix(`/api/go`)
@@ -62,7 +62,7 @@ services:
     networks:
       - backend
 
-  bun-service:
+  bun:
     build:
       context: ./bun
     environment:
@@ -95,6 +95,7 @@ services:
       - backend
 
   postgres:
+    container_name: postgres
     image: postgres:16
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-stress}
@@ -118,6 +119,7 @@ services:
       - backend
 
   pgbouncer:
+    container_name: pgbouncer
     image: edoburu/pgbouncer:v1.24.1-p1
     environment:
       DB_HOST: postgres
@@ -129,7 +131,7 @@ services:
       MAX_CLIENT_CONN: 200
       DEFAULT_POOL_SIZE: 20
       RESERVE_POOL_SIZE: 5
-      AUTH_TYPE: md5
+      AUTH_TYPE: scram-sha-256
     depends_on:
       postgres:
         condition: service_healthy
@@ -137,6 +139,7 @@ services:
       - backend
 
   redis:
+    container_name: redis
     image: redis:7.4-alpine
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     healthcheck:

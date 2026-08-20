@@ -67,7 +67,7 @@ services:
       context: ./bun
     environment:
       PORT: 3000
-      DATABASE_URL: postgres://${POSTGRES_USER:-stress}:${POSTGRES_PASSWORD:-stress}@pgbouncer:6432/${POSTGRES_DB:-stresslab}?sslmode=disable
+      DATABASE_URL: postgres://${POSTGRES_USER:-stress}:${POSTGRES_PASSWORD:-stress}@pgbouncer:5432/${POSTGRES_DB:-stresslab}?sslmode=disable
       DB_MAX_CONNS: ${BUN_DB_MAX_CONNS:-10}
       REDIS_URL: redis://redis:6379
       PRODUCT_ID_MIN: ${PRODUCT_ID_MIN:-1}
@@ -129,7 +129,7 @@ services:
       MAX_CLIENT_CONN: 200
       DEFAULT_POOL_SIZE: 20
       RESERVE_POOL_SIZE: 5
-      AUTH_TYPE: scram-sha-256
+      AUTH_TYPE: md5
     depends_on:
       postgres:
         condition: service_healthy

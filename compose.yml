@@ -17,13 +17,15 @@ services:
       - --certificatesresolvers.cfresolver.acme.email=${ACME_EMAIL:-ikhsanheriyawan@gmail.com}
       - --certificatesresolvers.cfresolver.acme.storage=/letsencrypt/acme.json
       - --log.level=${TRAEFIK_LOG_LEVEL:-INFO}
-      - --accesslog=true
-      - --accesslog.filepath=/logs/access.log
+      - --serversTransport.maxIdleConnsPerHost=200
+#      - --accesslog=true
+#      - --accesslog.filepath=/logs/access.log
     ports:
       - "${TRAEFIK_HTTP_PORT:-80}:80"
       - "${TRAEFIK_HTTPS_PORT:-443}:443"
     environment:
       CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN:-}
+      GOMAXPROCS: "2"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./letsencrypt:/letsencrypt
